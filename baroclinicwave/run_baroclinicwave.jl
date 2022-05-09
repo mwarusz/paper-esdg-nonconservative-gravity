@@ -143,13 +143,16 @@ let
 
   experiments = Dict()
 
-  N = 3
-  KH = 30
-  KV = 8
+  N = length(ARGS) > 1 ? ARGS[2] : 3
+  @assert(N in (3, 7))
 
-  #N = 7
-  #KH = 15
-  #KV = 4
+  if N == 3
+    KH = 30
+    KV = 8
+  else
+    KH = 15
+    KV = 4
+  end
 
   if N >= 7
     volume_form = FluxDifferencingForm(EntropyConservativeFlux(), :naive)
@@ -160,6 +163,11 @@ let
     run(A, FT, law, linlaw, N, KH, KV; volume_form, outputvtk, outputjld2)
 
   if outputjld2
-    @save(joinpath(jld2dir, "baroclinicwave_$(N).jld2"), law, linlaw, experiments)
+    @save(
+      joinpath(jld2dir, "baroclinicwave_$(N).jld2"),
+      law,
+      linlaw,
+      experiments
+    )
   end
 end

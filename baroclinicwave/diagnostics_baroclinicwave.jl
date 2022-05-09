@@ -177,8 +177,8 @@ function calculate_diagnostics(data)
   diagnostic_data
 end
 
-function save_data(diagpath, diagnostic_data)
-  ds = NCDataset(joinpath(diagpath, "baroclinicwave_3.nc"), "c")
+function save_data(diagpath, N, diagnostic_data)
+  ds = NCDataset(joinpath(diagpath, "baroclinicwave_$N.nc"), "c")
   ndays = length(keys(diagnostic_data))
   npoints = length(diagnostic_data[first(keys(diagnostic_data))].lat)
 
@@ -218,12 +218,17 @@ end
 
 let
   outdir = length(ARGS) > 0 ? ARGS[1] : "output"
-  outpath = joinpath(outdir, "baroclinicwave", "jld2", "baroclinicwave_3.jld2")
-  data = load(outpath)
-  diagnostic_data = calculate_diagnostics(data)
+  for N in (3, 7)
+    outpath =
+      joinpath(outdir, "baroclinicwave", "jld2", "baroclinicwave_$N.jld2")
+    if isfile(outpath)
+      data = load(outpath)
+      diagnostic_data = calculate_diagnostics(data)
 
-  diagdir = length(ARGS) > 1 ? ARGS[2] : "diagnostics"
-  diagpath = joinpath(diagdir, "baroclinicwave")
-  mkpath(diagpath)
-  save_data(diagpath, diagnostic_data)
+      diagdir = length(ARGS) > 1 ? ARGS[2] : "diagnostics"
+      diagpath = joinpath(diagdir, "baroclinicwave")
+      mkpath(diagpath)
+      save_data(diagpath, N, diagnostic_data)
+    end
+  end
 end

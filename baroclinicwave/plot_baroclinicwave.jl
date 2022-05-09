@@ -19,7 +19,7 @@ rcParams!(PyPlot.PyDict(PyPlot.matplotlib."rcParams"))
 
 const lonshift = 60
 
-function bw_compare_days(plotpath, lat, lon, day1, day2, day1data, day2data)
+function bw_compare_days(plotpath, N, lat, lon, day1, day2, day1data, day2data)
   ioff()
   fig, axs = subplots(3, 2, figsize = (27, 20))
 
@@ -43,7 +43,7 @@ function bw_compare_days(plotpath, lat, lon, day1, day2, day1data, day2data)
   bw_add_contour_plot!(axs[:, 2], day2, lon, lat, day2data..., plevels2, pnorm2)
 
   plt.subplots_adjust(wspace = 0.05)
-  savefig(joinpath(plotpath, "bw_panel.pdf"))
+  savefig(joinpath(plotpath, "bw_panel_$N.pdf"))
   close(fig)
 end
 
@@ -140,19 +140,20 @@ function bw_add_contour_plot!(
   end
 end
 
-function bw_timeseries(plotpath, t, pmin, vmax)
+function bw_timeseries(plotpath, N, t, pmin, vmax)
   t /= (24 * 3600)
   pmin /= 100
+  windowfilter!(vmax, 10)
 
   @pgf begin
-    xtick = 0:3:12
+    xtick = 0:3:15
     ptick = 870:30:990
 
     fig = @pgf GroupPlot({
       group_style = {group_size = "2 by 1", horizontal_sep = "1.5cm"},
       xtick = xtick,
       xmin = 0,
-      xmax = 12,
+      xmax = 15,
       xlabel = "Day",
     })
     ppmin = Plot({}, Coordinates(t, pmin))
@@ -165,11 +166,73 @@ function bw_timeseries(plotpath, t, pmin, vmax)
     pvmax = Plot({}, Coordinates(t, vmax))
     push!(
       fig,
-      {ytick = ptick, ylabel = "Maximum Horizontal Wind Speed [m/s]"},
+      {
+        ylabel = "Maximum Horizontal Wind Speed [m/s]",
+        legend_pos = "north west",
+      },
       pvmax,
     )
 
-    pgfsave(joinpath(plotpath, "bw_tseries.pdf"), fig)
+    pgfsave(joinpath(plotpath, "bw_tseries_$N.pdf"), fig)
+  end
+end
+
+function windowfilter!(a, m)
+  b = similar(a)
+  FT = eltype(a)
+  n = length(a)
+  for i = 1:n
+    window = max(1, i - m):min(n, i + m)
+    b[i] = sum(a[window]) / length(window)
+  end
+  a .= b
+end
+
+function bw_timeseries_compare(plotpath, t1, pmin1, vmax1, t2, pmin2, vmax2)
+  t1 /= (24 * 3600)
+  pmin1 /= 100
+  windowfilter!(vmax1, 10)
+  t2 /= (24 * 3600)
+  pmin2 /= 100
+  windowfilter!(vmax2, 10)
+
+  @pgf begin
+    xtick = 0:3:15
+    ptick = 870:30:990
+    ytick = 870:30:990
+
+    fig = @pgf GroupPlot({
+      group_style = {group_size = "2 by 1", horizontal_sep = "1.5cm"},
+      xtick = xtick,
+      xmin = 0,
+      xmax = 15,
+      xlabel = "Day",
+    })
+    ppmin1 = Plot({}, Coordinates(t1, pmin1))
+    ppmin2 = Plot({dashed, color = "blue"}, Coordinates(t2, pmin2))
+    legend = Legend("N=3", "N=7")
+    push!(
+      fig,
+      {ytick = ptick, ylabel = "Minimum Surface Pressure [hPa]"},
+      ppmin1,
+      ppmin2,
+      legend,
+    )
+
+    pvmax1 = Plot({}, Coordinates(t1, vmax1))
+    pvmax2 = Plot({dashed, color = "blue"}, Coordinates(t2, vmax2))
+    push!(
+      fig,
+      {
+        ylabel = "Maximum Horizontal Wind Speed [m/s]",
+        legend_pos = "north west",
+      },
+      pvmax1,
+      pvmax2,
+      legend,
+    )
+
+    pgfsave(joinpath(plotpath, "bw_tseries_compare.pdf"), fig)
   end
 end
 
@@ -184,21 +247,34 @@ let
   compare_days = (8, 10)
   tseries_data = Dict()
 
-  Dataset(joinpath(diagpath, "baroclinicwave_3.nc"), "r") do ds
-    lat = ds["lat"][:]
-    lon = ds["lon"][:]
-    tseries_data[3] =
-      (t = ds["t"][:], min_psurf = ds["min psurf"][:], max_vh = ds["max vh"][:])
+  for N in (3, 7)
+    path = joinpath(diagpath, "baroclinicwave_$N.nc")
+    if isfile(path)
+      Dataset(path, "r") do ds
+        lat = ds["lat"][:]
+        lon = ds["lon"][:]
+        tseries_data[N] = (
+          t = ds["t"][:],
+          min_psurf = ds["min psurf"][:],
+          max_vh = ds["max vh"][:],
+        )
 
-    daydata = ntuple(2) do i
-      day = compare_days[i]
-      psurf = ds["psurf"][day+1, :]
-      T850 = ds["T850"][day+1, :]
-      ωk850 = ds["vort850"][day+1, :]
-      (psurf, T850, ωk850)
+        daydata = ntuple(2) do i
+          day = compare_days[i]
+          psurf = ds["psurf"][day+1, :]
+          T850 = ds["T850"][day+1, :]
+          ωk850 = ds["vort850"][day+1, :]
+          (psurf, T850, ωk850)
+        end
+        bw_compare_days(plotpath, N, lat, lon, compare_days..., daydata...)
+      end
     end
-    bw_compare_days(plotpath, lat, lon, compare_days..., daydata...)
   end
 
-  bw_timeseries(plotpath, tseries_data[3]...)
+  for N in keys(tseries_data)
+    bw_timeseries(plotpath, N, tseries_data[N]...)
+  end
+  if 3 in keys(tseries_data) && 7 in keys(tseries_data)
+    bw_timeseries_compare(plotpath, tseries_data[3]..., tseries_data[7]...)
+  end
 end
