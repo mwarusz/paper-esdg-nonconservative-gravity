@@ -13,6 +13,7 @@ function run(
   KY;
   volume_form = WeakForm(),
   surface_flux = RoeFlux(),
+  warp,
   vtkpath,
 )
   outputvtk = !isnothing(vtkpath)
@@ -23,7 +24,15 @@ function run(
   cell = LobattoCell{FT, A}(Nq, Nq)
   vx = range(FT(0), stop = FT(_L), length = KX + 1)
   vz = range(FT(0), stop = FT(_H), length = KY + 1)
-  grid = brickgrid(cell, (vx, vz); periodic = (true, false))
+
+  function meshwarp(x)
+    x₁, x₂ = x
+    x̃₁ = x₁ + sinpi((x₁ - first(vx)) / _L) * sinpi(2 * x₂ / _H) * _L / 20
+    x̃₂ = x₂ - sinpi(2 * (x₁ - first(vx)) / _L) * sinpi(x₂ / _H) * _H / 20
+    SVector(x̃₁, x̃₂)
+  end
+
+  grid = brickgrid(warp ? meshwarp : identity, cell, (vx, vz); periodic = (true, false))
 
   dg = DGSEM(; law, grid, volume_form, surface_numericalflux = surface_flux)
 
@@ -111,25 +120,36 @@ let
   KX = 50
   KY = 5
   experiments["dx6"] =
-    run(A, law, N, KX, KY; volume_form, surface_flux, vtkpath)
+    run(A, law, N, KX, KY; volume_form, surface_flux, vtkpath, warp=false)
 
   KX = 100
   KY = 10
   experiments["dx3"] =
-    run(A, law, N, KX, KY; volume_form, surface_flux, vtkpath)
+    run(A, law, N, KX, KY; volume_form, surface_flux, vtkpath, warp=false)
 
-  # convergence
-  experiments["conv"] = Dict()
+  # convergence without warping
+  experiments["conv_nowarp"] = Dict()
   KX_base = 30
   KY_base = 3
   polyorders = 2:4
   nlevels = 4
   for N in polyorders
-    experiments["conv"][N] = ntuple(nlevels) do l
+    experiments["conv_nowarp"][N] = ntuple(nlevels) do l
       KX = KX_base * 2^(l - 1)
       KY = KY_base * 2^(l - 1)
       @show l, KX, KY
-      run(A, law, N, KX, KY; volume_form, surface_flux, vtkpath)
+      run(A, law, N, KX, KY; volume_form, surface_flux, vtkpath, warp=false)
+    end
+  end
+  
+  # convergence with warping
+  experiments["conv_warp"] = Dict()
+  for N in polyorders
+    experiments["conv_warp"][N] = ntuple(nlevels) do l
+      KX = KX_base * 2^(l - 1)
+      KY = KY_base * 2^(l - 1)
+      @show l, KX, KY
+      run(A, law, N, KX, KY; volume_form, surface_flux, vtkpath, warp=true)
     end
   end
 
@@ -140,7 +160,17 @@ let
   for N in polyorders
     errors = zeros(FT, nlevels)
     for l = 1:nlevels
-      errors[l] = experiments["conv"][N][l].errf
+      errors[l] = experiments["conv_nowarp"][N][l].errf
+    end
+    if nlevels > 1
+      rates = log2.(errors[1:(nlevels-1)] ./ errors[2:nlevels])
+      @show N
+      @show errors
+      @show rates
+    end
+    
+    for l = 1:nlevels
+      errors[l] = experiments["conv_warp"][N][l].errf
     end
     if nlevels > 1
       rates = log2.(errors[1:(nlevels-1)] ./ errors[2:nlevels])
