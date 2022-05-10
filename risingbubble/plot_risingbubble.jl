@@ -83,8 +83,8 @@ let
   mkpath(plotpath)
 
   Dataset(joinpath(diagpath, "data_hires_matrix.nc")) do ds
-    x = ds["x"][:]
-    z = ds["z"][:]
+    x = ds["x"][:, :]
+    z = ds["z"][:, :]
     δθ = ds["dtht"][:, :]
     rtb_contour_plot(plotpath, x, z, δθ)
   end

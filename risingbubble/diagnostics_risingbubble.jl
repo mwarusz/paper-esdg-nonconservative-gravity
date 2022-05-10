@@ -65,18 +65,18 @@ function save_diagnostics(diagpath, diagnostic_data)
 
     ds = NCDataset(joinpath(diagpath, "data_$exp.nc"), "c")
 
-    defDim(ds, "x", size(x, 1))
-    defDim(ds, "z", size(z, 2))
+    defDim(ds, "i", size(x, 1))
+    defDim(ds, "k", size(z, 2))
     defDim(ds, "t", length(t))
 
-    ncx = defVar(ds, "x", Float64, ("x",))
-    ncz = defVar(ds, "z", Float64, ("z",))
+    ncx = defVar(ds, "x", Float64, ("i", "k"))
+    ncz = defVar(ds, "z", Float64, ("i", "k"))
     nct = defVar(ds, "t", Float64, ("t",))
-    ncδθ = defVar(ds, "dtht", Float64, ("x", "z"))
+    ncδθ = defVar(ds, "dtht", Float64, ("i", "k"))
     ncδη = defVar(ds, "deta", Float64, ("t",))
 
-    ncx[:] = x[:, 1]
-    ncz[:] = z[1, :]
+    ncx[:, :] = x
+    ncz[:, :] = z
     nct[:] = t
     ncδθ[:] = δθ
     ncδη[:] = δη
