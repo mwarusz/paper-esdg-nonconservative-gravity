@@ -38,11 +38,11 @@ function compute_errors(dg, diag, diag_exact)
   err_w, err_T
 end
 
-function calculate_convergence(data)
+function calculate_convergence(conv_exp, data)
   convergence_data = Dict()
   law = data["law"]
   experiments = data["experiments"]
-  conv = experiments["conv"]
+  conv = experiments[conv_exp]
 
   for N in keys(conv)
     for exp in conv[N]
@@ -85,7 +85,7 @@ function calculate_diagnostics(data)
   experiments = data["experiments"]
 
   for exp_key in keys(experiments)
-    exp_key == "conv" && continue
+    startswith(exp_key, "conv") && continue
     exp = experiments[exp_key]
     dg = exp.dg
     q = exp.q
@@ -146,8 +146,8 @@ function save_diagnostics(diagpath, diagnostic_data)
   end
 end
 
-function save_convergence(diagpath, convergence_data)
-  ds = NCDataset(joinpath(diagpath, "convergence.nc"), "c")
+function save_convergence(diagpath, exp, convergence_data)
+  ds = NCDataset(joinpath(diagpath, "convergence_$(exp).nc"), "c")
 
   orders = sort(collect(keys(convergence_data)))
   defDim(ds, "polyorder", length(orders))
@@ -173,12 +173,14 @@ let
   outpath = joinpath(outdir, "gravitywave", "jld2", "gravitywave.jld2")
   data = load(outpath)
   diagnostic_data = calculate_diagnostics(data)
-  convergence_data = calculate_convergence(data)
+  convergence_data_nowarp = calculate_convergence("conv_nowarp", data)
+  convergence_data_warp = calculate_convergence("conv_warp", data)
 
   diagdir = length(ARGS) > 1 ? ARGS[2] : "diagnostics"
   diagpath = joinpath(diagdir, "gravitywave")
   mkpath(diagpath)
 
   save_diagnostics(diagpath, diagnostic_data)
-  save_convergence(diagpath, convergence_data)
+  save_convergence(diagpath, "nowarp", convergence_data_nowarp)
+  save_convergence(diagpath, "warp", convergence_data_warp)
 end

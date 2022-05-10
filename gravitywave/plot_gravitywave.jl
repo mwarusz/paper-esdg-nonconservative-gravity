@@ -12,8 +12,16 @@ const _scaling = 1e2 * _ΔT
 
 rcParams!(PyPlot.PyDict(PyPlot.matplotlib."rcParams"))
 
-function gw_convergence_plot(plotpath, polyorder, dx, T_error, w_error)
+function gw_convergence_plot(plotpath, warp, polyorder, dx, T_error, w_error)
   dxs = dx[2, :]
+
+  for (n, N) in enumerate(polyorder)
+    @show N
+    T_rates = log2.(T_error[n, 1:end-1] ./ T_error[n, 2:end])
+    w_rates = log2.(w_error[n, 1:end-1] ./ w_error[n, 2:end])
+    @show T_rates
+    @show w_rates
+  end
 
   @pgf begin
     plotsetup = {
@@ -42,15 +50,28 @@ function gw_convergence_plot(plotpath, polyorder, dx, T_error, w_error)
       for (n, N) in enumerate(polyorder)
         @show N
         dxs = dx[n, :]
-        if N == 2
-          Tcoeff = 2e-4
-          wcoeff = 3e-4
-        elseif N == 3
-          Tcoeff = 2e-5
-          wcoeff = 3e-5
-        elseif N == 4
-          Tcoeff = 5e-6
-          wcoeff = 8e-6
+        if warp == "nowarp"
+          if N == 2
+            Tcoeff = 2e-4
+            wcoeff = 3e-4
+          elseif N == 3
+            Tcoeff = 2e-5
+            wcoeff = 3e-5
+          elseif N == 4
+            Tcoeff = 5e-6
+            wcoeff = 8e-6
+          end
+        else
+          if N == 2
+            Tcoeff = 5e-1
+            wcoeff = 1e-2
+          elseif N == 3
+            Tcoeff = 9e-2
+            wcoeff = 5e-3
+          elseif N == 4
+            Tcoeff = 1e-2
+            wcoeff = 5e-4
+          end
         end
         ordl = (dxs ./ dxs[1]) .^ (N + 1)
         if s === 'T'
@@ -72,7 +93,7 @@ function gw_convergence_plot(plotpath, polyorder, dx, T_error, w_error)
       legend = Legend(labels)
       push!(fig, {title = title, ylabel = ylabel}, plots..., legend)
     end
-    savepath = joinpath(plotpath, "gw_convergence.pdf")
+    savepath = joinpath(plotpath, "gw_convergence_$(warp).pdf")
     pgfsave(savepath, fig)
   end
 end
@@ -228,11 +249,13 @@ let
   gw_compare_contour_plot(plotpath, contour_data, KXs...)
   gw_compare_line_plot(plotpath, contour_data, KXs...)
 
-  Dataset(joinpath(diagpath, "convergence.nc"), "r") do ds
-    polyorder = ds["polyorder"][:]
-    dx = ds["dx"][:, :]
-    T_error = ds["T error"][:, :]
-    w_error = ds["w error"][:, :]
-    gw_convergence_plot(plotpath, polyorder, dx, T_error, w_error)
+  for warp in ("nowarp", "warp")
+    Dataset(joinpath(diagpath, "convergence_$(warp).nc"), "r") do ds
+      polyorder = ds["polyorder"][:]
+      dx = ds["dx"][:, :]
+      T_error = ds["T error"][:, :]
+      w_error = ds["w error"][:, :]
+      gw_convergence_plot(plotpath, warp, polyorder, dx, T_error, w_error)
+    end
   end
 end
