@@ -6,6 +6,7 @@ using CUDA
 using Adapt
 
 function run(
+  exp,
   A,
   law,
   N,
@@ -48,7 +49,7 @@ function run(
   qref .= gravitywave.(Ref(law), points(grid), FT(0), false)
 
   if outputvtk
-    vtkdir = joinpath(vtkpath, "$N", "$(KX)x$(KY)")
+    vtkdir = joinpath(vtkpath, exp, "$N", "$(KX)x$(KY)")
     mkpath(vtkdir)
     pvd = paraview_collection(joinpath(vtkdir, "timesteps"))
   end
@@ -119,37 +120,41 @@ let
 
   KX = 50
   KY = 5
-  experiments["dx6"] =
-    run(A, law, N, KX, KY; volume_form, surface_flux, vtkpath, warp=false)
+  exp = "dx6"
+  experiments[exp] =
+    run(exp, A, law, N, KX, KY; volume_form, surface_flux, vtkpath, warp=false)
 
   KX = 100
   KY = 10
-  experiments["dx3"] =
-    run(A, law, N, KX, KY; volume_form, surface_flux, vtkpath, warp=false)
+  exp = "dx3"
+  experiments[exp] =
+    run(exp, A, law, N, KX, KY; volume_form, surface_flux, vtkpath, warp=false)
 
   # convergence without warping
+  exp = "conv_nowarp"
   experiments["conv_nowarp"] = Dict()
   KX_base = 30
   KY_base = 3
   polyorders = 2:4
   nlevels = 4
   for N in polyorders
-    experiments["conv_nowarp"][N] = ntuple(nlevels) do l
+    experiments[exp][N] = ntuple(nlevels) do l
       KX = KX_base * 2^(l - 1)
       KY = KY_base * 2^(l - 1)
       @show l, KX, KY
-      run(A, law, N, KX, KY; volume_form, surface_flux, vtkpath, warp=false)
+      run(exp, A, law, N, KX, KY; volume_form, surface_flux, vtkpath, warp=false)
     end
   end
   
   # convergence with warping
-  experiments["conv_warp"] = Dict()
+  exp = "conv_warp"
+  experiments[exp] = Dict()
   for N in polyorders
-    experiments["conv_warp"][N] = ntuple(nlevels) do l
+    experiments[exp][N] = ntuple(nlevels) do l
       KX = KX_base * 2^(l - 1)
       KY = KY_base * 2^(l - 1)
       @show l, KX, KY
-      run(A, law, N, KX, KY; volume_form, surface_flux, vtkpath, warp=true)
+      run(exp, A, law, N, KX, KY; volume_form, surface_flux, vtkpath, warp=true)
     end
   end
 
