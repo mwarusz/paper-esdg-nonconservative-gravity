@@ -144,7 +144,7 @@ let
 
   experiments = Dict()
 
-  N = length(ARGS) > 1 ? ARGS[2] : 3
+  N = length(ARGS) > 1 ? parse(Int, ARGS[2]) : 3
   @assert(N in (3, 7))
 
   if N == 3
