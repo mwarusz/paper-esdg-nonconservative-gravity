@@ -147,6 +147,7 @@ let
   end
   
   # convergence with warping
+  nlevels = 5
   exp = "conv_warp"
   experiments[exp] = Dict()
   for N in polyorders
@@ -164,6 +165,7 @@ let
 
   for N in polyorders
     errors = zeros(FT, nlevels)
+    nlevels = 4
     for l = 1:nlevels
       errors[l] = experiments["conv_nowarp"][N][l].errf
     end
@@ -174,6 +176,7 @@ let
       @show rates
     end
     
+    nlevels = 5
     for l = 1:nlevels
       errors[l] = experiments["conv_warp"][N][l].errf
     end
