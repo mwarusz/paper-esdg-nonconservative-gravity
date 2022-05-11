@@ -91,7 +91,11 @@ function gw_convergence_plot(plotpath, warp, polyorder, dx, T_error, w_error)
         push!(labels, "order $(N+1)")
       end
       legend = Legend(labels)
-      push!(fig, {title = title, ylabel = ylabel}, plots..., legend)
+      if s === 'T' && warp == "warp"
+        push!(fig, {title = title, ylabel = ylabel, ymin=1e-10}, plots..., legend)
+      else
+        push!(fig, {title = title, ylabel = ylabel}, plots..., legend)
+      end
     end
     savepath = joinpath(plotpath, "gw_convergence_$(warp).pdf")
     pgfsave(savepath, fig)
