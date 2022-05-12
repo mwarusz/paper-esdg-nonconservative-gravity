@@ -39,8 +39,7 @@ function run(A, FT, law, linlaw, N, KH, KV; volume_form, outputvtk, outputjld2)
 
   cfl = FT(3)
   dz = min_node_distance(grid, dims = (3,))
-  dt = cfl * dz / FT(330)
-  @show dz, dt
+  dt = cfl * dz / FT(364.1361189688942)
 
   timeend = FT(ndays * 24 * 3600)
 
