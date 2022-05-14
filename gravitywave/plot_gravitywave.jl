@@ -237,8 +237,8 @@ let
   for KX in KXs
     Dataset(joinpath(diagpath, "contour_3_$(KX).nc"), "r") do ds
       contour_data[KX] = (
-        x = ds["x"][:],
-        z = ds["z"][:],
+        x = ds["x"][:, 1],
+        z = ds["z"][1, :],
         w = ds["w"][:, :],
         δT = ds["dT"][:, :],
         w_exact = ds["w exact"][:, :],

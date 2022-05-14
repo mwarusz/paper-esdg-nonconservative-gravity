@@ -116,8 +116,6 @@ function save_diagnostics(diagpath, diagnostic_data)
   for (N, KX) in keys(diagnostic_data)
     data = diagnostic_data[(N, KX)]
     x, z = components(data.diag_points)
-    x = x[:, 1]
-    z = z[1, :]
 
     w = data.diag.:1
     δT = data.diag.:2
@@ -125,18 +123,18 @@ function save_diagnostics(diagpath, diagnostic_data)
     δT_exact = data.diag_exact.:2
 
     ds = NCDataset(joinpath(diagpath, "contour_$(N)_$(KX).nc"), "c")
-    defDim(ds, "x", length(x))
-    defDim(ds, "z", length(z))
+    defDim(ds, "i", size(x, 1))
+    defDim(ds, "k", size(z, 2))
 
-    ncx = defVar(ds, "x", Float64, ("x",))
-    ncz = defVar(ds, "z", Float64, ("z",))
-    ncw = defVar(ds, "w", Float64, ("x", "z"))
-    ncδT = defVar(ds, "dT", Float64, ("x", "z"))
-    ncw_exact = defVar(ds, "w exact", Float64, ("x", "z"))
-    ncδT_exact = defVar(ds, "dT exact", Float64, ("x", "z"))
+    ncx = defVar(ds, "x", Float64, ("i", "k"))
+    ncz = defVar(ds, "z", Float64, ("i", "k"))
+    ncw = defVar(ds, "w", Float64, ("i", "k"))
+    ncδT = defVar(ds, "dT", Float64, ("i", "k"))
+    ncw_exact = defVar(ds, "w exact", Float64, ("i", "k"))
+    ncδT_exact = defVar(ds, "dT exact", Float64, ("i", "k"))
 
-    ncx[:] = x
-    ncz[:] = z
+    ncx[:, :] = x
+    ncz[:, :] = z
     ncw[:, :] = w
     ncδT[:, :] = δT
     ncw_exact[:, :] = w_exact
