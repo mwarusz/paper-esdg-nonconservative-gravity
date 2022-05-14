@@ -1,5 +1,5 @@
 
-include("../common.jl")
+include(joinpath("..", "common.jl"))
 
 include("risingbubble.jl")
 

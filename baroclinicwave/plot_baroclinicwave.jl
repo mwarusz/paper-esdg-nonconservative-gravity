@@ -4,17 +4,8 @@ using DataStructures
 
 using PGFPlotsX
 using PyPlot
-function rcParams!(rcParams)
-  rcParams["font.size"] = 20
-  rcParams["xtick.labelsize"] = 20
-  rcParams["ytick.labelsize"] = 20
-  rcParams["legend.fontsize"] = 20
-  rcParams["figure.titlesize"] = 32
-  rcParams["axes.titlepad"] = 10
-  rcParams["axes.labelpad"] = 10
-  rcParams["backend"] = "pdf"
-end
 
+include(joinpath("..", "common.jl"))
 rcParams!(PyPlot.PyDict(PyPlot.matplotlib."rcParams"))
 
 const lonshift = 60

@@ -6,7 +6,7 @@ using NCDatasets
 using DataStructures
 
 include("gravitywave.jl")
-include("../common.jl")
+include(joinpath("..", "common.jl"))
 
 function diagnostics(law, q, x⃗)
   ρ, ρu, ρw, ρe = q

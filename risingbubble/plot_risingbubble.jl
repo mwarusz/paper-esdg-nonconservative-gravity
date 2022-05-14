@@ -1,5 +1,5 @@
 include("risingbubble.jl")
-include("../common.jl")
+include(joinpath("..", "common.jl"))
 
 using NCDatasets
 using DataStructures
