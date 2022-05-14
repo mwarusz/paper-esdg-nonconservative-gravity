@@ -9,7 +9,7 @@ const _a = 6.371229e6 / _X
 const _Ω = 7.29212e-5 * _X
 const _p_0 = 1e5
 const _grav = 9.80616
-const _R_d = 287.0
+const _R_d = 287.0024093890231
 
 struct BaroclinicWave <: AbstractProblem end
 
@@ -66,19 +66,29 @@ function referencestate(law::EulerGravityLaw, ::BaroclinicWave, x⃗)
   FT = eltype(law)
   r = norm(x⃗)
   z = r - _a
-
+  grav = constants(law).grav
   R_d = FT(_R_d)
 
   p_s = FT(_p_0)
-  T_ref = FT(300)
+  T_s = FT(290)
+  T_min = FT(220)
+  H_t = FT(8e3)
 
-  δ = constants(law).grav / (R_d * T_ref)
-  ρ_s = p_s / (T_ref * R_d)
-  ρ_ref = ρ_s * exp(-δ * z)
+  H_sfc = R_d * T_s / grav
+  z′ = z / H_t
+  tanh_z′ = tanh(z′)
 
-  p_ref = ρ_ref * R_d * T_ref
+  ΔTv = T_s - T_min
+  Tv = T_s - ΔTv * tanh_z′
 
-  SVector(ρ_ref, p_ref)
+  ΔTv′ = ΔTv / T_s
+  p = -H_t * (z′ + ΔTv′ * (log(1 - ΔTv′ * tanh_z′) - log(1 + tanh_z′) + z′))
+  p /= H_sfc * (1 - ΔTv′^2)
+  p = p_s * exp(p)
+
+  ρ = p / (R_d * Tv)
+
+  SVector(ρ, p)
 end
 
 function baroclinicwave(law, x⃗, aux, add_perturbation = true)

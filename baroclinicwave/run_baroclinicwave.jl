@@ -43,8 +43,8 @@ function run(A, FT, law, linlaw, N, KH, KV; volume_form, outputvtk, outputjld2)
 
   timeend = FT(ndays * 24 * 3600)
 
-  numberofsteps = ceil(Int, timeend / dt)
-  dt = timeend / numberofsteps
+  #numberofsteps = ceil(Int, timeend / dt)
+  #dt = timeend / numberofsteps
 
   q = fieldarray(undef, law, grid)
   q .= baroclinicwave.(Ref(law), points(grid), dg.auxstate, true)
@@ -59,7 +59,7 @@ function run(A, FT, law, linlaw, N, KH, KV; volume_form, outputvtk, outputjld2)
   end
   count = 0
   do_output = function (step, time, q)
-    if outputvtk && step % ceil(Int, timeend / 100 / dt) == 0
+    if outputvtk && step % floor(Int, timeend / 100 / dt) == 0
       @show step, time
       filename = "KH_$(lpad(KH, 6, '0'))_KV_$(lpad(KV, 6, '0'))_step$(lpad(count, 6, '0'))"
       count += 1
@@ -79,10 +79,10 @@ function run(A, FT, law, linlaw, N, KH, KV; volume_form, outputvtk, outputjld2)
 
   qday = []
   save_days = function (step, time, q)
-    if step % ceil(Int, timeend / 100 / dt) == 0
+    if step % floor(Int, timeend / 100 / dt) == 0
       @show step, time, 100 * time / timeend
     end
-    if step % ceil(Int, timeend / ndays / dt) == 0
+    if step % floor(Int, timeend / ndays / dt) == 0
       push!(qday, adapt(Array, q))
     end
   end
@@ -90,7 +90,7 @@ function run(A, FT, law, linlaw, N, KH, KV; volume_form, outputvtk, outputjld2)
   timeseries = NTuple{3, FT}[]
   tstime = 5 * 60
   save_vp = function (step, time, q)
-    if step % ceil(Int, tstime / dt) == 0
+    if step % floor(Int, tstime / dt) == 0
       p, vh = components(calc_p_and_vh.(Ref(law), q, points(grid), dg.auxstate))
       min_p_surf = minimum(@view Array(p)[1:Nq^2, 1:KV:end])
       max_vh = maximum(Array(vh))
