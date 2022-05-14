@@ -16,7 +16,9 @@ function calc_p_and_vh(law, q, x⃗, aux)
   SVector(p, vh)
 end
 
-function run(A, FT, law, linlaw, N, KH, KV; volume_form, outputvtk, outputjld2)
+function run(A, FT, law, linlaw, N, KH, KV; volume_form, vtkpath, outputjld)
+  outputvtk = !isnothing(vtkpath)
+
   Nq = N + 1
 
   ndays = 15
@@ -53,15 +55,14 @@ function run(A, FT, law, linlaw, N, KH, KV; volume_form, outputvtk, outputjld2)
   qref .= baroclinicwave.(Ref(law), points(grid), dg.auxstate, false)
 
   if outputvtk
-    vtkdir = joinpath("output", "baroclinicwave_hires", "vtk")
+    vtkdir = joinpath(vtkpath, "$(N)_$(KH)_$(KV)")
     mkpath(vtkdir)
     pvd = paraview_collection(joinpath(vtkdir, "timesteps"))
   end
   count = 0
   do_output = function (step, time, q)
     if outputvtk && step % ceil(Int, timeend / 100 / dt) == 0
-      @show step, time
-      filename = "KH_$(lpad(KH, 6, '0'))_KV_$(lpad(KV, 6, '0'))_step$(lpad(count, 6, '0'))"
+      filename = "step$(lpad(count, 6, '0'))"
       count += 1
       vtkfile = vtk_grid(joinpath(vtkdir, filename), grid)
       P = Bennu.toequallyspaced(cell)
@@ -135,8 +136,13 @@ let
   linlaw = LinearEulerGravityLaw(law)
 
   outputvtk = false
-  outputjld2 = true
-  if outputjld2
+  outputjld = true
+  vtkpath = nothing
+  if outputvtk
+    vtkpath = joinpath(outdir, "baroclinicwave", "vtk")
+    mkpath(vtkpath)
+  end
+  if outputjld
     jld2dir = joinpath(outdir, "baroclinicwave", "jld2")
     mkpath(jld2dir)
   end
@@ -160,9 +166,9 @@ let
     volume_form = FluxDifferencingForm(EntropyConservativeFlux(), :per_dir)
   end
   experiments["$(N)_$(KH)_$(KV)"] =
-    run(A, FT, law, linlaw, N, KH, KV; volume_form, outputvtk, outputjld2)
+    run(A, FT, law, linlaw, N, KH, KV; volume_form, vtkpath, outputjld)
 
-  if outputjld2
+  if outputjld
     @save(
       joinpath(jld2dir, "baroclinicwave_$(N).jld2"),
       law,
