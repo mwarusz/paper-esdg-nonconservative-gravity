@@ -168,6 +168,67 @@ function bw_timeseries(plotpath, N, t, pmin, vmax)
   end
 end
 
+function bw_mass_cons(plotpath, N, t, mass_cons)
+  t /= (24 * 3600)
+
+  @pgf begin
+    xtick = 0:3:15
+    fig = @pgf GroupPlot({
+      group_style = {group_size = "1 by 1", horizontal_sep = "1.5cm"},
+      xtick = xtick,
+      xmin = 0,
+      xmax = 15,
+      xlabel = "Day",
+    })
+    ppmin = Plot({}, Coordinates(t, mass_cons))
+    push!(
+      fig,
+      {ylabel = "Mass conservation"},
+      ppmin,
+    )
+    pgfsave(joinpath(plotpath, "bw_mass_cons_$N.pdf"), fig)
+  end
+end
+
+function bw_energy(plotpath, N, t, _, _, δPE, δIE, δKE, δTE)
+  t /= (24 * 3600)
+
+  @pgf begin
+    xtick = 0:3:15
+    ytick = -30:10:30
+    fig = @pgf GroupPlot({
+      group_style = {group_size = "1 by 1", horizontal_sep = "1.5cm"},
+      xtick = xtick,
+      ytick = ytick,
+      xmin = 0,
+      xmax = 15,
+      ymin = -30,
+      ymax = 30,
+      xlabel = "Day",
+    })
+
+    pδKE = Plot({}, Coordinates(t, δKE))
+    pδPE = Plot({color="yellow"}, Coordinates(t, δPE))
+    pδIE = Plot({color="red"}, Coordinates(t, δIE))
+    pδTE = Plot({color="blue"}, Coordinates(t, δTE))
+
+    legend = Legend("kinetic, potential, internal, ke+pe+ie")
+    push!(
+      fig,
+      { 
+       ylabel = "Energy - Energy0 (J/kg)",
+       legend_pos = "south west",
+      },
+      pδKE,
+      pδPE,
+      pδIE,
+      pδTE,
+      legend
+    )
+    pgfsave(joinpath(plotpath, "bw_energy_$N.pdf"), fig)
+  end
+end
+
 function windowfilter!(a, m)
   b = similar(a)
   FT = eltype(a)
@@ -237,6 +298,7 @@ let
 
   compare_days = (8, 10)
   tseries_data = Dict()
+  mass_en_tseries_data = Dict()
 
   for N in (3, 7)
     path = joinpath(diagpath, "baroclinicwave_$N.nc")
@@ -248,6 +310,15 @@ let
           t = ds["t"][:],
           min_psurf = ds["min psurf"][:],
           max_vh = ds["max vh"][:],
+        )
+        mass_en_tseries_data[N] = (
+          t = ds["t"][:],
+          mass_cons = ds["mass cons"][:],
+          TE_cons = ds["TE cons"][:],
+          δPE = ds["dPE"][:],
+          δIE = ds["dIE"][:],
+          δKE = ds["dKE"][:],
+          δTE = ds["dTE"][:],
         )
 
         daydata = ntuple(2) do i
@@ -264,6 +335,8 @@ let
 
   for N in keys(tseries_data)
     bw_timeseries(plotpath, N, tseries_data[N]...)
+    bw_mass_cons(plotpath, N, mass_en_tseries_data[N].t, mass_en_tseries_data[N].mass_cons)
+    bw_energy(plotpath, N, mass_en_tseries_data[N]...)
   end
   if 3 in keys(tseries_data) && 7 in keys(tseries_data)
     bw_timeseries_compare(plotpath, tseries_data[3]..., tseries_data[7]...)

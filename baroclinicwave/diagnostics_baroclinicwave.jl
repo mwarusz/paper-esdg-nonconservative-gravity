@@ -172,6 +172,7 @@ function calculate_diagnostics(data)
     end
 
     diagnostic_data["tseries"] = exp.timeseries
+    diagnostic_data["mass_en_tseries"] = exp.mass_energy_timeseries
   end
 
   diagnostic_data
@@ -183,6 +184,7 @@ function save_data(diagpath, N, diagnostic_data)
   npoints = length(diagnostic_data[first(keys(diagnostic_data))].lat)
 
   tseries = diagnostic_data["tseries"]
+  mass_en_tseries = diagnostic_data["mass_en_tseries"]
 
   defDim(ds, "point", npoints)
   defDim(ds, "day", ndays)
@@ -197,6 +199,13 @@ function save_data(diagpath, N, diagnostic_data)
   t = defVar(ds, "t", Float64, ("t",))
   min_psurf = defVar(ds, "min psurf", Float64, ("t",))
   max_vh = defVar(ds, "max vh", Float64, ("t",))
+  
+  mass_cons = defVar(ds, "mass cons", Float64, ("t",))
+  TE_cons = defVar(ds, "TE cons", Float64, ("t",))
+  δPE = defVar(ds, "dPE", Float64, ("t",))
+  δIE = defVar(ds, "dIE", Float64, ("t",))
+  δKE = defVar(ds, "dKE", Float64, ("t",))
+  δTE = defVar(ds, "dTE", Float64, ("t",))
 
   lat[:] = diagnostic_data[1].lat
   lon[:] = diagnostic_data[1].lon
@@ -204,6 +213,13 @@ function save_data(diagpath, N, diagnostic_data)
   t[:] = first.(tseries)
   min_psurf[:] = map(x -> x[2], tseries)
   max_vh[:] = last.(tseries)
+
+  mass_cons[:] = map(x -> x[2], mass_en_tseries)
+  TE_cons[:] = map(x -> x[3], mass_en_tseries)
+  δPE[:] = map(x -> x[4], mass_en_tseries)
+  δIE[:] = map(x -> x[5], mass_en_tseries)
+  δKE[:] = map(x -> x[6], mass_en_tseries)
+  δTE[:] = map(x -> x[7], mass_en_tseries)
 
   for day in keys(diagnostic_data)
     day isa Int || continue
