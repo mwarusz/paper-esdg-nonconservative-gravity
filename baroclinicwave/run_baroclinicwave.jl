@@ -16,6 +16,18 @@ function calc_p_and_vh(law, q, x⃗, aux)
   SVector(p, vh)
 end
 
+function calc_energy_components(law, q, x⃗, aux)
+  ρ, ρu⃗, ρe = EulerGravity.unpackstate(law, q)
+  Φ = EulerGravity.geopotential(law, aux)
+  p = EulerGravity.pressure(law, ρ, ρu⃗, ρe, Φ)
+
+  PE = ρ * Φ
+  IE = p / (constants(law).γ - 1)
+  KE = ρu⃗' * ρu⃗ / (2 * ρ)
+  
+  SVector(PE, IE, KE)
+end
+
 function run(A, FT, law, linlaw, N, KH, KV; volume_form, vtkpath, outputjld)
   outputvtk = !isnothing(vtkpath)
 
@@ -50,6 +62,14 @@ function run(A, FT, law, linlaw, N, KH, KV; volume_form, vtkpath, outputjld)
 
   q = fieldarray(undef, law, grid)
   q .= baroclinicwave.(Ref(law), points(grid), dg.auxstate, true)
+
+  ρ, ρu, ρv, ρw, ρe = components(q)
+  PE, IE, KE = components(calc_energy_components.(Ref(law), q, points(grid), dg.auxstate))
+  mass0 = sum(dg.MJ .* ρ)
+  ∫PE0 = sum(dg.MJ .* PE)
+  ∫IE0 = sum(dg.MJ .* IE)
+  ∫KE0 = sum(dg.MJ .* KE)
+  ∫TE0 = sum(dg.MJ .* ρe)
 
   qref = fieldarray(undef, law, grid)
   qref .= baroclinicwave.(Ref(law), points(grid), dg.auxstate, false)
@@ -89,14 +109,37 @@ function run(A, FT, law, linlaw, N, KH, KV; volume_form, vtkpath, outputjld)
   end
 
   timeseries = NTuple{3, FT}[]
+  mass_energy_timeseries = NTuple{7, FT}[]
   tstime = 5 * 60
   save_vp = function (step, time, q)
     if step % ceil(Int, tstime / dt) == 0
+      ρ, ρu, ρv, ρw, ρe = components(q)
+      PE, IE, KE = components(calc_energy_components.(Ref(law), q, points(grid), dg.auxstate))
+      mass = sum(dg.MJ .* ρ)
+      ∫PE = sum(dg.MJ .* PE)
+      ∫IE = sum(dg.MJ .* IE)
+      ∫KE = sum(dg.MJ .* KE)
+      ∫TE = sum(dg.MJ .* ρe)
+
+
       p, vh = components(calc_p_and_vh.(Ref(law), q, points(grid), dg.auxstate))
       min_p_surf = minimum(@view Array(p)[1:Nq^2, 1:KV:end])
       max_vh = maximum(Array(vh))
+
+      mass_cons = (mass - mass0) / mass0
+      TE_cons = (∫TE - ∫TE0) / ∫TE0 
+
+      δPE = (∫PE - ∫PE0) / mass0
+      δIE = (∫IE - ∫IE0) / mass0
+      δKE = (∫KE - ∫KE0) / mass0
+      δTE = (∫TE - ∫TE0) / mass0
+
       @show time, min_p_surf, max_vh
+      @show mass_cons, TE_cons
+      @show δPE, δIE, δKE, δTE
+
       push!(timeseries, (time, min_p_surf, max_vh))
+      push!(mass_energy_timeseries, (time, mass_cons, TE_cons, δPE, δIE, δKE, δTE))
     end
   end
 
@@ -120,7 +163,7 @@ function run(A, FT, law, linlaw, N, KH, KV; volume_form, vtkpath, outputjld)
 
   dg = adapt(Array, dg)
   dg_linear = adapt(Array, dg_linear)
-  (; dg, dg_linear, qday, timeseries)
+  (; dg, dg_linear, qday, timeseries, mass_energy_timeseries)
 end
 
 let
